@@ -49,6 +49,23 @@ uv.lock
 out/*.csv
 data/*.pdf
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Storage
+webapp/backend/storage/
+
+# Claude Code
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
