@@ -36,6 +36,11 @@ function Layout() {
               </NavLink>
             </li>
             <li>
+              <NavLink to="/convert" className={({ isActive }) => isActive ? 'active' : ''}>
+                PDF Convert
+              </NavLink>
+            </li>
+            <li>
               <NavLink to="/upload" className={({ isActive }) => isActive ? 'active' : ''}>
                 Upload
               </NavLink>

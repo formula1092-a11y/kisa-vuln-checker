@@ -1,7 +1,7 @@
 """API routers."""
 from fastapi import APIRouter
 
-from app.api import auth, assets, checklist, assessments, exceptions, reports, agent, users
+from app.api import auth, assets, checklist, assessments, exceptions, reports, agent, users, convert
 
 api_router = APIRouter()
 
@@ -13,3 +13,4 @@ api_router.include_router(assessments.router, prefix="/assessments", tags=["Asse
 api_router.include_router(exceptions.router, prefix="/exceptions", tags=["Exceptions"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(agent.router, prefix="/agent", tags=["Agent"])
+api_router.include_router(convert.router, prefix="/convert", tags=["Convert"])

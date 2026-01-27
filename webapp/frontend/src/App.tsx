@@ -13,6 +13,7 @@ import ReportsPage from './pages/ReportsPage';
 import ChecklistPage from './pages/ChecklistPage';
 import UploadPage from './pages/UploadPage';
 import UsersPage from './pages/UsersPage';
+import ConvertPage from './pages/ConvertPage';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -60,6 +61,7 @@ function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="checklist" element={<ChecklistPage />} />
             <Route path="upload" element={<UploadPage />} />
+            <Route path="convert" element={<ConvertPage />} />
             <Route path="users" element={<UsersPage />} />
           </Route>
         </Routes>
