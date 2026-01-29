@@ -13,6 +13,7 @@ services:
       - ./data:/app/data
       - ./backend/storage:/app/storage
       - ../src:/app/src:ro
+      - ./agents:/app/agents:ro
     ports:
       - "8000:8000"
     restart: unless-stopped

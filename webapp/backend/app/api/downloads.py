@@ -6,8 +6,18 @@ from fastapi.responses import FileResponse, PlainTextResponse
 
 router = APIRouter()
 
-# Agent scripts directory (relative to project root)
-AGENTS_DIR = Path(__file__).resolve().parents[3] / "agents"
+# Agent scripts directory - check multiple possible locations
+_possible_paths = [
+    Path("/app/agents"),  # Docker container path
+    Path(__file__).resolve().parents[3] / "agents",  # Local dev path (webapp/agents)
+]
+AGENTS_DIR = None
+for _path in _possible_paths:
+    if _path.exists():
+        AGENTS_DIR = _path
+        break
+if AGENTS_DIR is None:
+    AGENTS_DIR = _possible_paths[0]  # Default to Docker path
 
 
 @router.get("/agents")
