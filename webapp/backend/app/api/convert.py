@@ -12,7 +12,15 @@ from fastapi.responses import StreamingResponse
 from app.core.security import get_current_user
 
 # Add src directory to path for importing parser
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+# In Docker: /app/src, Local: ../../../../src from this file
+src_paths = [
+    Path("/app/src"),  # Docker container path
+    Path(__file__).resolve().parent.parent.parent.parent.parent / "src",  # Local dev path
+]
+for src_path in src_paths:
+    if src_path.exists():
+        sys.path.insert(0, str(src_path))
+        break
 
 router = APIRouter()
 
