@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi, assetsApi } from '../services/api';
-import type { ReportSummary, Asset } from '../types';
+import type { Asset } from '../types';
 import StatusBadge from '../components/StatusBadge';
 
 function ReportsPage() {

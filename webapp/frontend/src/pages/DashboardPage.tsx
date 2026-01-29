@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import type { ReportSummary, AssetSummary } from '../types';
+import type { ReportSummary } from '../types';
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<ReportSummary | null>(null);

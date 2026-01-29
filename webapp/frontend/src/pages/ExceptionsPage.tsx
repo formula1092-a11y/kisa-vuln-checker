@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { exceptionsApi } from '../services/api';
-import type { ExceptionWithAssessment, ExceptionDecision, ApprovalStatus } from '../types';
+import type { ExceptionWithAssessment, ExceptionDecision } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
