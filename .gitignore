@@ -62,6 +62,7 @@ yarn-error.log*
 
 # Storage
 webapp/backend/storage/
+webapp/data/
 
 # Claude Code
 .claude/
