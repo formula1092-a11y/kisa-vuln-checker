@@ -45,6 +45,11 @@ function Layout() {
                 Upload
               </NavLink>
             </li>
+            <li>
+              <NavLink to="/agents" className={({ isActive }) => isActive ? 'active' : ''}>
+                Agents
+              </NavLink>
+            </li>
             {user?.role === 'admin' && (
               <li>
                 <NavLink to="/users" className={({ isActive }) => isActive ? 'active' : ''}>
