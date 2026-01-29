@@ -23,7 +23,7 @@ async def list_agents():
             "name": "Windows Server Agent",
             "filename": "check-windows.ps1",
             "platform": "Windows",
-            "description": "PowerShell script for Windows Server vulnerability check (W-01 ~ W-16)",
+            "description": "PowerShell script for Windows Server vulnerability check (W-01 ~ W-64)",
             "usage": '.\\check-windows.ps1 -ServerUrl "http://SERVER:8000" -AssetName "MyServer"',
             "requirements": "PowerShell 5.1+, Administrator privileges",
         })
@@ -36,7 +36,7 @@ async def list_agents():
             "name": "Unix/Linux Agent",
             "filename": "check-unix.sh",
             "platform": "Linux/Unix",
-            "description": "Bash script for Unix/Linux server vulnerability check (U-01 ~ U-16)",
+            "description": "Bash script for Unix/Linux server vulnerability check (U-01 ~ U-67)",
             "usage": './check-unix.sh -s "http://SERVER:8000" -n "MyServer"',
             "requirements": "Bash, curl, root privileges",
         })
