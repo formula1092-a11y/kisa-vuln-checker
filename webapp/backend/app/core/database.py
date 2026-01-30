@@ -32,6 +32,9 @@ def init_db():
     # Create default admin user if not exists
     _create_default_admin()
 
+    # Seed checklist items if empty
+    _seed_checklist()
+
 
 def _create_default_admin():
     """Create default admin user if not exists."""
@@ -60,5 +63,67 @@ def _create_default_admin():
                 db.rollback()
     except Exception as e:
         logging.warning(f"Error during admin user check: {e}")
+    finally:
+        db.close()
+
+
+def _seed_checklist():
+    """Seed checklist items from JSON file if database is empty."""
+    from app.models.checklist import ChecklistItem, Severity
+    from pathlib import Path
+    import json
+    import logging
+
+    db = SessionLocal()
+    try:
+        # Check if checklist already has items
+        count = db.query(ChecklistItem).count()
+        if count > 0:
+            logging.info(f"Checklist already has {count} items, skipping seed")
+            return
+
+        # Find seed file - check multiple locations
+        seed_paths = [
+            Path("/app/seed_checklist.json"),  # Docker
+            Path(__file__).resolve().parent.parent.parent / "seed_checklist.json",  # Local
+        ]
+
+        seed_file = None
+        for path in seed_paths:
+            if path.exists():
+                seed_file = path
+                break
+
+        if not seed_file:
+            logging.warning("Seed file not found, skipping checklist seed")
+            return
+
+        # Load and insert seed data
+        with open(seed_file, "r", encoding="utf-8") as f:
+            items = json.load(f)
+
+        severity_map = {
+            "high": Severity.HIGH,
+            "medium": Severity.MEDIUM,
+            "low": Severity.LOW,
+        }
+
+        for item_data in items:
+            item = ChecklistItem(
+                item_code=item_data["item_code"],
+                asset_type=item_data["asset_type"],
+                category=item_data.get("category"),
+                title=item_data["title"],
+                description=item_data.get("description"),
+                severity=severity_map.get(item_data.get("severity", "medium"), Severity.MEDIUM),
+            )
+            db.add(item)
+
+        db.commit()
+        logging.info(f"Seeded {len(items)} checklist items")
+
+    except Exception as e:
+        logging.warning(f"Error seeding checklist: {e}")
+        db.rollback()
     finally:
         db.close()
