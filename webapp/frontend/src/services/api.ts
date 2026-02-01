@@ -73,6 +73,12 @@ export const assetsApi = {
     const response = await api.post(`/assets/${id}/initialize-assessments`);
     return response.data;
   },
+  downloadRemediationScript: async (id: number): Promise<Blob> => {
+    const response = await api.get(`/assets/${id}/remediation-script`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };
 
 // Checklist API

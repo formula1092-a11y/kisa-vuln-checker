@@ -15,6 +15,7 @@ function AssetDetailPage() {
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
   const [showExceptionModal, setShowExceptionModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
   const { data: asset, isLoading: assetLoading } = useQuery({
     queryKey: ['asset', assetId],
@@ -126,12 +127,30 @@ function AssetDetailPage() {
               Initialize Assessments
             </button>
           )}
-          {assessments && assessments.some((a: Assessment) => a.status === 'fail' && a.remediation_command) && (
+          {assessments && assessments.some((a: Assessment) => a.status === 'fail') && (
             <button
               className="btn btn-success"
-              onClick={() => window.open(`/api/assessments/remediation-script/${assetId}`, '_blank')}
+              disabled={downloading}
+              onClick={async () => {
+                setDownloading(true);
+                try {
+                  const blob = await assetsApi.downloadRemediationScript(assetId);
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  const ext = asset?.asset_type === 'windows' ? 'ps1' : 'sh';
+                  a.download = `remediate_${asset?.name}_${assetId}.${ext}`;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                } catch (error) {
+                  console.error('Download failed:', error);
+                  alert('조치 스크립트 다운로드에 실패했습니다.');
+                } finally {
+                  setDownloading(false);
+                }
+              }}
             >
-              Download Fix Script
+              {downloading ? 'Downloading...' : 'Download Fix Script'}
             </button>
           )}
         </div>

@@ -1,6 +1,7 @@
 """Asset management endpoints."""
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -10,6 +11,7 @@ from app.models.asset import Asset
 from app.models.assessment import Assessment, AssessmentStatus
 from app.models.checklist import ChecklistItem
 from app.schemas.asset import AssetCreate, AssetUpdate, AssetResponse, AssetListResponse
+from app.services.remediation import generate_windows_remediation_script, generate_unix_remediation_script
 
 router = APIRouter()
 
@@ -180,3 +182,59 @@ async def initialize_assessments(
     db.commit()
 
     return {"message": f"Initialized {created_count} assessments", "total_items": len(checklist_items)}
+
+
+@router.get("/{asset_id}/remediation-script")
+async def get_remediation_script(
+    asset_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate remediation script for failed assessments."""
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    # Get failed assessments with checklist items
+    failed_assessments = db.query(Assessment, ChecklistItem).join(
+        ChecklistItem, Assessment.checklist_item_id == ChecklistItem.id
+    ).filter(
+        Assessment.asset_id == asset_id,
+        Assessment.status == AssessmentStatus.FAIL
+    ).all()
+
+    if not failed_assessments:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No failed assessments found for this asset"
+        )
+
+    # Prepare failed items list
+    failed_items = [
+        {
+            "item_code": checklist.item_code,
+            "title": checklist.title,
+        }
+        for assessment, checklist in failed_assessments
+    ]
+
+    # Generate script based on asset type
+    asset_type = asset.asset_type.value if hasattr(asset.asset_type, 'value') else str(asset.asset_type)
+
+    if asset_type == "windows":
+        script = generate_windows_remediation_script(failed_items)
+        filename = f"remediate_{asset.name}_{asset_id}.ps1"
+        media_type = "application/octet-stream"
+    else:  # unix/linux
+        script = generate_unix_remediation_script(failed_items)
+        filename = f"remediate_{asset.name}_{asset_id}.sh"
+        media_type = "application/x-sh"
+
+    return PlainTextResponse(
+        content=script,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "X-Failed-Items": str(len(failed_items)),
+        }
+    )
