@@ -644,8 +644,8 @@ UNIX_REMEDIATION = {
         "title": "root 홈, 패스 디렉토리 권한 설정",
         "commands": [
             '# root PATH 환경변수에서 . 제거',
-            'sed -i "s/:\.:/:/g" /root/.bashrc',
-            'sed -i "s/:\.$//" /root/.bashrc',
+            r'sed -i "s/:\.:/:/g" /root/.bashrc',
+            r'sed -i "s/:\.$//" /root/.bashrc',
             'chmod 700 /root',
             'echo "root 홈 디렉토리 권한이 설정되었습니다."'
         ]
@@ -1258,17 +1258,18 @@ def generate_windows_remediation_script(failed_items: List[Dict]) -> str:
         code = item.get("item_code", "")
         if code in WINDOWS_REMEDIATION:
             rem = WINDOWS_REMEDIATION[code]
+            title = rem['title']
             script_lines.append(f"# {'=' * 50}")
-            script_lines.append(f"# {code}: {rem['title']}")
+            script_lines.append(f"# {code}: {title}")
             script_lines.append(f"# {'=' * 50}")
-            script_lines.append(f"Write-Host ''")
-            script_lines.append(f"Write-Host '[조치] {code}: {rem[\"title\"]}' -ForegroundColor Yellow")
+            script_lines.append("Write-Host ''")
+            script_lines.append(f"Write-Host '[Remediation] {code}: {title}' -ForegroundColor Yellow")
             script_lines.append("try {")
             for cmd in rem["commands"]:
                 script_lines.append(f"    {cmd}")
             script_lines.append(f'    $results += @{{ Code = "{code}"; Status = "Success" }}')
             script_lines.append("} catch {")
-            script_lines.append(f'    Write-Host "오류: $_" -ForegroundColor Red')
+            script_lines.append('    Write-Host "Error: $_" -ForegroundColor Red')
             script_lines.append(f'    $results += @{{ Code = "{code}"; Status = "Failed: $_" }}')
             script_lines.append("}")
             script_lines.append("")
@@ -1321,14 +1322,15 @@ def generate_unix_remediation_script(failed_items: List[Dict]) -> str:
         code = item.get("item_code", "")
         if code in UNIX_REMEDIATION:
             rem = UNIX_REMEDIATION[code]
+            title = rem['title']
             script_lines.append(f"# {'=' * 50}")
-            script_lines.append(f"# {code}: {rem['title']}")
+            script_lines.append(f"# {code}: {title}")
             script_lines.append(f"# {'=' * 50}")
-            script_lines.append(f"echo ''")
-            script_lines.append(f"echo '[조치] {code}: {rem[\"title\"]}'")
+            script_lines.append("echo ''")
+            script_lines.append(f"echo '[Remediation] {code}: {title}'")
             for cmd in rem["commands"]:
                 script_lines.append(cmd)
-            script_lines.append(f'RESULTS+=("{code}: 완료")')
+            script_lines.append(f'RESULTS+=("{code}: Done")')
             script_lines.append("")
 
     script_lines.extend([
