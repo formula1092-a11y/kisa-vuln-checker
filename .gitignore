@@ -70,3 +70,4 @@ webapp/data/
 # OS
 .DS_Store
 Thumbs.db
+nul
