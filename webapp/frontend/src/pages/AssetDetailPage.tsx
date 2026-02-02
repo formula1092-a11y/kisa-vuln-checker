@@ -135,6 +135,13 @@ function AssetDetailPage() {
                 setDownloading(true);
                 try {
                   const blob = await assetsApi.downloadRemediationScript(assetId);
+                  // Check if the response is an error (JSON) instead of a script
+                  if (blob.type === 'application/json') {
+                    const text = await blob.text();
+                    const error = JSON.parse(text);
+                    alert(`Error: ${error.detail || 'Unknown error'}`);
+                    return;
+                  }
                   const url = window.URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
@@ -142,9 +149,10 @@ function AssetDetailPage() {
                   a.download = `remediate_${asset?.name}_${assetId}.${ext}`;
                   a.click();
                   window.URL.revokeObjectURL(url);
-                } catch (error) {
+                } catch (error: any) {
                   console.error('Download failed:', error);
-                  alert('조치 스크립트 다운로드에 실패했습니다.');
+                  const message = error.response?.data?.detail || error.message || 'Unknown error';
+                  alert(`조치 스크립트 다운로드 실패: ${message}`);
                 } finally {
                   setDownloading(false);
                 }
