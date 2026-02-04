@@ -37,7 +37,7 @@ add_result() {
     local status="$2"
     local evidence="$3"
     echo "[$status] $code - $evidence"
-    evidence=$(echo "$evidence" | sed 's/"/\\"/g' | tr '\n' ' ')
+    evidence=$(echo "$evidence" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/\t/ /g' | tr '\n' ' ' | tr '\r' ' ')
     if [ "$RESULTS" = "[]" ]; then
         RESULTS="[{\"item_code\":\"$code\",\"status\":\"$status\",\"evidence\":\"$evidence\"}"
     else
