@@ -605,7 +605,7 @@ UNIX_REMEDIATION = {
         ]
     },
     "U-02": {
-        "title": "비밀번호 복잡성 설정",
+        "title": "비밀번호 복잡성정책 설정",
         "commands": [
             '# 비밀번호 복잡성 설정',
             'if [ -f /etc/security/pwquality.conf ]; then',
@@ -641,25 +641,112 @@ UNIX_REMEDIATION = {
         ]
     },
     "U-05": {
-        "title": "root 홈, 패스 디렉토리 권한 설정",
+        "title": "root 이외의 UID가 0 금지",
+        "commands": [
+            '# UID 0 계정 확인',
+            r"awk -F: '$3 == 0 && $1 != \"root\" {print $1}' /etc/passwd",
+            'echo "root 외 UID 0 계정이 있으면 제거하세요."',
+            'echo "명령: usermod -u <새UID> <계정명>"'
+        ]
+    },
+    "U-06": {
+        "title": "root만 su 사용 제한",
+        "commands": [
+            '# wheel 그룹만 su 허용',
+            'grep -q "pam_wheel.so" /etc/pam.d/su || echo "auth required pam_wheel.so use_uid" >> /etc/pam.d/su',
+            'chmod 4750 /usr/bin/su',
+            'echo "su 명령이 wheel 그룹으로 제한되었습니다."',
+            'echo "허용할 사용자: usermod -aG wheel <사용자명>"'
+        ]
+    },
+    "U-07": {
+        "title": "불필요한 계정 제거",
+        "commands": [
+            '# 불필요한 계정 확인',
+            'cat /etc/passwd | grep -v nologin | grep -v false',
+            'echo "위 계정 중 불필요한 계정을 제거하세요."',
+            'echo "명령: userdel <계정명>"'
+        ]
+    },
+    "U-08": {
+        "title": "관리자 그룹에 최소한의 계정 포함",
+        "commands": [
+            '# wheel/sudo 그룹 확인',
+            'getent group wheel 2>/dev/null || getent group sudo',
+            'echo "관리자 그룹에 필요한 계정만 포함되어 있는지 확인하세요."',
+            'echo "불필요한 계정 제거: gpasswd -d <사용자명> wheel"'
+        ]
+    },
+    "U-09": {
+        "title": "계정이 존재하지 않는 GID 금지",
+        "commands": [
+            '# 사용되지 않는 그룹 확인',
+            'for gid in $(cut -d: -f3 /etc/group | sort -u); do',
+            '    getent passwd | awk -F: -v g="$gid" \'$4 == g\' | grep -q . || echo "GID $gid: 계정 없음"',
+            'done',
+            'echo "사용되지 않는 그룹을 정리하세요."',
+            'echo "명령: groupdel <그룹명>"'
+        ]
+    },
+    "U-10": {
+        "title": "동일한 UID 금지",
+        "commands": [
+            '# 중복 UID 확인',
+            'cut -d: -f3 /etc/passwd | sort | uniq -d',
+            'echo "중복 UID가 있으면 수정하세요."',
+            'echo "명령: usermod -u <새UID> <계정명>"'
+        ]
+    },
+    "U-11": {
+        "title": "불필요한 shell 제한",
+        "commands": [
+            '# 로그인 불필요 계정 shell 확인',
+            r"awk -F: '$7 !~ /nologin|false/ && $3 >= 500 {print $1, $7}' /etc/passwd",
+            'echo "로그인이 필요없는 계정의 shell을 /sbin/nologin으로 변경하세요."',
+            'echo "명령: usermod -s /sbin/nologin <계정명>"'
+        ]
+    },
+    "U-12": {
+        "title": "세션 접속 시간 제한",
+        "commands": [
+            '# TMOUT 설정',
+            'grep -q "^TMOUT" /etc/profile || echo "export TMOUT=600" >> /etc/profile',
+            'source /etc/profile',
+            'echo "세션 타임아웃이 10분으로 설정되었습니다."'
+        ]
+    },
+    "U-13": {
+        "title": "시스템의 비밀번호 암호화 알고리즘 사용",
+        "commands": [
+            '# 비밀번호 암호화 알고리즘을 SHA-512로 설정',
+            'sed -i "s/^ENCRYPT_METHOD.*/ENCRYPT_METHOD SHA512/" /etc/login.defs',
+            'grep -q "^ENCRYPT_METHOD" /etc/login.defs || echo "ENCRYPT_METHOD SHA512" >> /etc/login.defs',
+            'authconfig --passalgo=sha512 --update 2>/dev/null',
+            'echo "비밀번호 암호화 알고리즘이 SHA-512로 설정되었습니다."'
+        ]
+    },
+    "U-14": {
+        "title": "root 홈, 패스 디렉터리 권한 및 패스 설정",
         "commands": [
             '# root PATH 환경변수에서 . 제거',
             r'sed -i "s/:\.:/:/g" /root/.bashrc',
             r'sed -i "s/:\.$//" /root/.bashrc',
+            r'sed -i "s/^PATH=\.:*/PATH=/" /root/.bashrc',
             'chmod 700 /root',
-            'echo "root 홈 디렉토리 권한이 설정되었습니다."'
+            'echo "root 홈 디렉토리 권한 및 PATH가 설정되었습니다."'
         ]
     },
-    "U-06": {
-        "title": "파일 및 디렉토리 소유자 설정",
+    "U-15": {
+        "title": "파일 및 디렉터리 소유자 설정",
         "commands": [
             '# 소유자 없는 파일 확인',
             'find / -nouser -o -nogroup 2>/dev/null | head -20',
-            'echo "위 파일들의 소유자를 확인하고 설정하세요."'
+            'echo "위 파일들의 소유자를 확인하고 설정하세요."',
+            'echo "명령: chown <소유자>:<그룹> <파일명>"'
         ]
     },
-    "U-07": {
-        "title": "/etc/passwd 파일 권한 설정",
+    "U-16": {
+        "title": "/etc/passwd 파일 소유자 및 권한 설정",
         "commands": [
             '# /etc/passwd 권한 설정',
             'chown root:root /etc/passwd',
@@ -667,8 +754,19 @@ UNIX_REMEDIATION = {
             'echo "/etc/passwd 권한이 설정되었습니다."'
         ]
     },
-    "U-08": {
-        "title": "/etc/shadow 파일 권한 설정",
+    "U-17": {
+        "title": "시스템 기본 스크립트 변수 설정",
+        "commands": [
+            '# 사용자 시작파일 권한 설정',
+            'for dir in /home/*; do',
+            '    [ -d "$dir" ] && chmod 644 "$dir"/.bashrc "$dir"/.bash_profile "$dir"/.profile 2>/dev/null',
+            'done',
+            'chmod 644 /root/.bashrc /root/.bash_profile /root/.profile 2>/dev/null',
+            'echo "시스템 기본 스크립트 파일 권한이 설정되었습니다."'
+        ]
+    },
+    "U-18": {
+        "title": "/etc/shadow 파일 소유자 및 권한 설정",
         "commands": [
             '# /etc/shadow 권한 설정',
             'chown root:root /etc/shadow',
@@ -676,8 +774,8 @@ UNIX_REMEDIATION = {
             'echo "/etc/shadow 권한이 설정되었습니다."'
         ]
     },
-    "U-09": {
-        "title": "/etc/hosts 파일 권한 설정",
+    "U-19": {
+        "title": "/etc/hosts 파일 소유자 및 권한 설정",
         "commands": [
             '# /etc/hosts 권한 설정',
             'chown root:root /etc/hosts',
@@ -685,8 +783,8 @@ UNIX_REMEDIATION = {
             'echo "/etc/hosts 권한이 설정되었습니다."'
         ]
     },
-    "U-10": {
-        "title": "/etc/inetd.conf 파일 권한 설정",
+    "U-20": {
+        "title": "/etc/(x)inetd.conf 파일 소유자 및 권한 설정",
         "commands": [
             '# inetd.conf 권한 설정',
             '[ -f /etc/inetd.conf ] && chmod 600 /etc/inetd.conf && chown root:root /etc/inetd.conf',
@@ -694,8 +792,8 @@ UNIX_REMEDIATION = {
             'echo "inetd.conf 권한이 설정되었습니다."'
         ]
     },
-    "U-11": {
-        "title": "/etc/syslog.conf 파일 권한 설정",
+    "U-21": {
+        "title": "/etc/(r)syslog.conf 파일 소유자 및 권한 설정",
         "commands": [
             '# syslog 설정 파일 권한',
             '[ -f /etc/syslog.conf ] && chmod 640 /etc/syslog.conf && chown root:root /etc/syslog.conf',
@@ -703,8 +801,8 @@ UNIX_REMEDIATION = {
             'echo "syslog 설정 파일 권한이 설정되었습니다."'
         ]
     },
-    "U-12": {
-        "title": "/etc/services 파일 권한 설정",
+    "U-22": {
+        "title": "/etc/services 파일 소유자 및 권한 설정",
         "commands": [
             '# /etc/services 권한 설정',
             'chown root:root /etc/services',
@@ -712,8 +810,8 @@ UNIX_REMEDIATION = {
             'echo "/etc/services 권한이 설정되었습니다."'
         ]
     },
-    "U-13": {
-        "title": "SUID, SGID 파일 점검",
+    "U-23": {
+        "title": "SUID, SGID, Sticky bit 설정 파일 점검",
         "commands": [
             '# 불필요한 SUID/SGID 파일 확인',
             'find / -perm -4000 -o -perm -2000 2>/dev/null | head -20',
@@ -721,18 +819,19 @@ UNIX_REMEDIATION = {
             'echo "제거 명령: chmod u-s <파일명> 또는 chmod g-s <파일명>"'
         ]
     },
-    "U-14": {
-        "title": "사용자 시작파일 권한 설정",
+    "U-24": {
+        "title": "사용자, 시스템 환경변수 파일의 소유자 및 권한 설정",
         "commands": [
-            '# 사용자 시작파일 권한 설정',
+            '# 사용자 환경변수 파일 권한 설정',
             'for dir in /home/*; do',
-            '    [ -d "$dir" ] && chmod 644 "$dir"/.bashrc "$dir"/.bash_profile 2>/dev/null',
+            '    [ -d "$dir" ] && chmod 644 "$dir"/.bashrc "$dir"/.bash_profile "$dir"/.profile 2>/dev/null',
+            '    [ -d "$dir" ] && chown $(basename "$dir"):$(basename "$dir") "$dir"/.bashrc "$dir"/.bash_profile "$dir"/.profile 2>/dev/null',
             'done',
-            'chmod 644 /root/.bashrc /root/.bash_profile 2>/dev/null',
-            'echo "시작파일 권한이 설정되었습니다."'
+            'chmod 644 /root/.bashrc /root/.bash_profile /root/.profile 2>/dev/null',
+            'echo "환경변수 파일 권한이 설정되었습니다."'
         ]
     },
-    "U-15": {
+    "U-25": {
         "title": "world writable 파일 점검",
         "commands": [
             '# world writable 파일 확인',
@@ -741,124 +840,183 @@ UNIX_REMEDIATION = {
             'echo "명령: chmod o-w <파일명>"'
         ]
     },
-    "U-16": {
-        "title": "/dev 디바이스 파일 점검",
+    "U-26": {
+        "title": "/dev에 존재하지 않는 device 파일 점검",
         "commands": [
             '# /dev 비정상 파일 확인',
             'find /dev -type f 2>/dev/null',
-            'echo "위 파일들이 정상 디바이스 파일인지 확인하세요."'
+            'echo "위 파일들이 정상 디바이스 파일인지 확인하세요."',
+            'echo "비정상 파일 제거: rm -f <파일명>"'
         ]
     },
-    "U-17": {
-        "title": "rhosts 사용 금지",
+    "U-27": {
+        "title": "$HOME/.rhosts, hosts.equiv 사용 금지",
         "commands": [
             '# rhosts 파일 제거',
-            'find /home -name ".rhosts" -exec rm -f {} \\;',
+            r'find /home -name ".rhosts" -exec rm -f {} \;',
             'rm -f /root/.rhosts',
             'rm -f /etc/hosts.equiv',
-            'echo "rhosts 파일이 제거되었습니다."'
+            'echo "rhosts, hosts.equiv 파일이 제거되었습니다."'
         ]
     },
-    "U-18": {
-        "title": "접속 IP 및 포트 제한",
+    "U-28": {
+        "title": "접근 IP 및 포트 제한",
         "commands": [
             '# TCP Wrapper 설정',
             'echo "sshd: ALL" >> /etc/hosts.deny',
-            'echo "sshd: 192.168.0.0/24" >> /etc/hosts.allow',  # 예시 IP 대역
+            'echo "sshd: 192.168.0.0/24" >> /etc/hosts.allow',
             'echo "허용할 IP 대역을 /etc/hosts.allow에 설정하세요."'
         ]
     },
-    "U-19": {
-        "title": "finger 서비스 비활성화",
+    "U-29": {
+        "title": "hosts.lpd 파일 소유자 및 권한 설정",
+        "commands": [
+            '# hosts.lpd 권한 설정',
+            '[ -f /etc/hosts.lpd ] && chmod 600 /etc/hosts.lpd && chown root:root /etc/hosts.lpd',
+            'echo "hosts.lpd 권한이 설정되었습니다."'
+        ]
+    },
+    "U-30": {
+        "title": "UMASK 설정 관리",
+        "commands": [
+            '# UMASK 022 설정',
+            'sed -i "s/^UMASK.*/UMASK 022/" /etc/login.defs',
+            'grep -q "^umask" /etc/profile || echo "umask 022" >> /etc/profile',
+            'echo "UMASK가 022로 설정되었습니다."'
+        ]
+    },
+    "U-31": {
+        "title": "홈디렉토리 소유자 및 권한 설정",
+        "commands": [
+            '# 홈 디렉토리 권한 설정',
+            'for dir in /home/*; do',
+            '    [ -d "$dir" ] && chmod 700 "$dir"',
+            '    [ -d "$dir" ] && chown $(basename "$dir"):$(basename "$dir") "$dir"',
+            'done',
+            'echo "홈 디렉토리 소유자 및 권한이 설정되었습니다."'
+        ]
+    },
+    "U-32": {
+        "title": "홈 디렉토리에 부적절한 디렉토리에 권한 설정",
+        "commands": [
+            '# 홈 디렉토리 내 부적절한 권한 점검',
+            'for dir in /home/*; do',
+            '    [ -d "$dir" ] && find "$dir" -type d -perm -o+w 2>/dev/null',
+            'done',
+            'echo "위 디렉토리의 world writable 권한을 제거하세요."',
+            'echo "명령: chmod o-w <디렉토리명>"'
+        ]
+    },
+    "U-33": {
+        "title": "숨겨진 파일 및 디렉토리 검색 및 제거",
+        "commands": [
+            '# 숨겨진 파일 확인',
+            'find / -name ".*" -type f 2>/dev/null | head -30',
+            'echo "불필요한 숨겨진 파일을 확인하고 제거하세요."'
+        ]
+    },
+    "U-34": {
+        "title": "Finger 서비스 비활성화",
         "commands": [
             '# finger 서비스 비활성화',
             'systemctl stop finger.socket 2>/dev/null',
             'systemctl disable finger.socket 2>/dev/null',
             '[ -f /etc/xinetd.d/finger ] && sed -i "s/disable.*=.*/disable = yes/" /etc/xinetd.d/finger',
-            'echo "finger 서비스가 비활성화되었습니다."'
+            'echo "Finger 서비스가 비활성화되었습니다."'
         ]
     },
-    "U-20": {
-        "title": "Anonymous FTP 비활성화",
+    "U-35": {
+        "title": "익명 서비스에 대한 터미널 접근 제어 설정",
         "commands": [
             '# vsftpd Anonymous 비활성화',
             'if [ -f /etc/vsftpd/vsftpd.conf ]; then',
             '    sed -i "s/^anonymous_enable=.*/anonymous_enable=NO/" /etc/vsftpd/vsftpd.conf',
             '    systemctl restart vsftpd',
             'fi',
-            'echo "Anonymous FTP가 비활성화되었습니다."'
+            'if [ -f /etc/vsftpd.conf ]; then',
+            '    sed -i "s/^anonymous_enable=.*/anonymous_enable=NO/" /etc/vsftpd.conf',
+            '    systemctl restart vsftpd',
+            'fi',
+            'echo "익명 FTP 접근이 비활성화되었습니다."'
         ]
     },
-    "U-21": {
+    "U-36": {
         "title": "r 계열 서비스 비활성화",
         "commands": [
             '# r 계열 서비스 비활성화',
             'for svc in rsh rlogin rexec; do',
             '    systemctl stop $svc 2>/dev/null',
             '    systemctl disable $svc 2>/dev/null',
+            '    [ -f /etc/xinetd.d/$svc ] && sed -i "s/disable.*=.*/disable = yes/" /etc/xinetd.d/$svc',
             'done',
             'echo "r 계열 서비스가 비활성화되었습니다."'
         ]
     },
-    "U-22": {
-        "title": "cron 파일 권한 설정",
+    "U-37": {
+        "title": "crontab 접근통제에 대한 권한 설정",
         "commands": [
             '# cron 파일 권한 설정',
             'chown root:root /etc/crontab',
             'chmod 600 /etc/crontab',
             'chmod 700 /var/spool/cron',
-            'echo "cron 파일 권한이 설정되었습니다."'
+            'echo "root" > /etc/cron.allow 2>/dev/null',
+            'chmod 600 /etc/cron.allow 2>/dev/null',
+            'echo "crontab 접근통제가 설정되었습니다."'
         ]
     },
-    "U-23": {
-        "title": "DoS 취약 서비스 비활성화",
+    "U-38": {
+        "title": "DoS 공격에 취약한 서비스 비활성화",
         "commands": [
             '# DoS 취약 서비스 비활성화',
             'for svc in echo discard daytime chargen; do',
             '    [ -f /etc/xinetd.d/$svc ] && sed -i "s/disable.*=.*/disable = yes/" /etc/xinetd.d/$svc',
             'done',
+            'systemctl restart xinetd 2>/dev/null',
             'echo "DoS 취약 서비스가 비활성화되었습니다."'
         ]
     },
-    "U-24": {
-        "title": "NFS 서비스 비활성화",
+    "U-39": {
+        "title": "불필요한 NFS 서비스 비활성화",
         "commands": [
             '# NFS 서비스 비활성화',
             'systemctl stop nfs-server 2>/dev/null',
             'systemctl disable nfs-server 2>/dev/null',
+            'systemctl stop nfs 2>/dev/null',
+            'systemctl disable nfs 2>/dev/null',
             'echo "NFS 서비스가 비활성화되었습니다."'
         ]
     },
-    "U-25": {
+    "U-40": {
         "title": "NFS 접근 통제",
         "commands": [
             '# NFS exports 보안 설정',
-            '[ -f /etc/exports ] && echo "# /shared 192.168.1.0/24(ro,sync)" >> /etc/exports',
-            'echo "/etc/exports 파일에서 공유 디렉토리 접근을 제한하세요."'
+            '[ -f /etc/exports ] && echo "# /shared 192.168.1.0/24(ro,sync,no_root_squash)" >> /etc/exports',
+            'echo "/etc/exports 파일에서 공유 디렉토리 접근을 제한하세요."',
+            'echo "everyone 공유는 반드시 제거하세요."'
         ]
     },
-    "U-26": {
-        "title": "automountd 제거",
+    "U-41": {
+        "title": "불필요한 automountd 제거",
         "commands": [
             '# automount 비활성화',
             'systemctl stop autofs 2>/dev/null',
             'systemctl disable autofs 2>/dev/null',
-            'echo "automount가 비활성화되었습니다."'
+            'echo "automountd가 비활성화되었습니다."'
         ]
     },
-    "U-27": {
-        "title": "RPC 서비스 확인",
+    "U-42": {
+        "title": "불필요한 RPC 서비스 비활성화",
         "commands": [
             '# 불필요한 RPC 서비스 비활성화',
-            'for svc in rpcbind rpc.statd; do',
+            'for svc in rpcbind rpc.statd rpc.cmsd rpc.ttdbserverd; do',
             '    systemctl stop $svc 2>/dev/null',
             '    systemctl disable $svc 2>/dev/null',
             'done',
-            'echo "RPC 서비스가 비활성화되었습니다."'
+            'echo "불필요한 RPC 서비스가 비활성화되었습니다."'
         ]
     },
-    "U-28": {
-        "title": "NIS/NIS+ 점검",
+    "U-43": {
+        "title": "NIS, NIS+ 점검",
         "commands": [
             '# NIS 서비스 비활성화',
             'systemctl stop ypserv 2>/dev/null',
@@ -868,7 +1026,7 @@ UNIX_REMEDIATION = {
             'echo "NIS 서비스가 비활성화되었습니다."'
         ]
     },
-    "U-29": {
+    "U-44": {
         "title": "tftp, talk 서비스 비활성화",
         "commands": [
             '# tftp, talk 서비스 비활성화',
@@ -880,117 +1038,213 @@ UNIX_REMEDIATION = {
             'echo "tftp, talk 서비스가 비활성화되었습니다."'
         ]
     },
-    "U-30": {
-        "title": "Sendmail 버전 점검",
+    "U-45": {
+        "title": "정보 전송 보안 설정",
         "commands": [
-            '# Sendmail 버전 확인 및 업데이트',
-            'sendmail -d0.1 < /dev/null 2>&1 | head -1',
-            'echo "Sendmail을 최신 버전으로 업데이트하세요."',
-            'echo "yum update sendmail 또는 apt upgrade sendmail"'
+            '# SSH 서비스 활성화 및 보안 설정',
+            'systemctl enable sshd',
+            'systemctl start sshd',
+            'sed -i "s/^#*Protocol.*/Protocol 2/" /etc/ssh/sshd_config',
+            'systemctl restart sshd',
+            'echo "SSH 프로토콜 2 보안 설정이 완료되었습니다."'
         ]
     },
-    "U-31": {
-        "title": "SMTP 릴레이 제한",
+    "U-46": {
+        "title": "일반 사용자의 정보 관련 권한 설정",
         "commands": [
-            '# Sendmail 릴레이 제한',
-            '[ -f /etc/mail/sendmail.cf ] && grep -q "R$\\*" /etc/mail/access',
-            'echo "/etc/mail/access 파일에서 릴레이를 제한하세요."'
+            '# Sendmail 일반사용자 실행 방지',
+            'if [ -f /etc/mail/sendmail.cf ]; then',
+            r'    grep -q "O PrivacyOptions" /etc/mail/sendmail.cf && sed -i "s/^O PrivacyOptions.*/O PrivacyOptions=restrictqrun/" /etc/mail/sendmail.cf',
+            'fi',
+            'chmod 750 /usr/sbin/sendmail 2>/dev/null',
+            'echo "일반 사용자의 메일 관련 권한이 제한되었습니다."'
         ]
     },
-    "U-32": {
-        "title": "일반사용자 Sendmail 실행 방지",
+    "U-47": {
+        "title": "정보 보호 관련법의 설정",
         "commands": [
-            '# Sendmail restrictqrun 설정',
-            '[ -f /etc/mail/sendmail.cf ] && grep -q "PrivacyOptions" /etc/mail/sendmail.cf',
-            'echo "sendmail.cf에 PrivacyOptions=restrictqrun 설정을 추가하세요."'
+            '# SMTP 릴레이 제한',
+            'if [ -f /etc/mail/sendmail.cf ]; then',
+            r'    grep -q "R$\*" /etc/mail/access 2>/dev/null',
+            'fi',
+            'echo "/etc/mail/access 파일에서 SMTP 릴레이를 제한하세요."',
+            'echo "Sendmail의 PrivacyOptions에 restrictqrun,noexpn,novrfy를 설정하세요."'
         ]
     },
-    "U-33": {
-        "title": "DNS 보안 패치",
+    "U-48": {
+        "title": "expn, vrfy 명령어 제한",
+        "commands": [
+            '# Sendmail expn, vrfy 명령어 제한',
+            'if [ -f /etc/mail/sendmail.cf ]; then',
+            r'    sed -i "s/^O PrivacyOptions.*/O PrivacyOptions=restrictqrun,noexpn,novrfy/" /etc/mail/sendmail.cf',
+            '    systemctl restart sendmail 2>/dev/null',
+            'fi',
+            'if [ -f /etc/postfix/main.cf ]; then',
+            '    postconf -e "disable_vrfy_command = yes"',
+            '    systemctl restart postfix 2>/dev/null',
+            'fi',
+            'echo "expn, vrfy 명령어가 제한되었습니다."'
+        ]
+    },
+    "U-49": {
+        "title": "DNS 보안 패치 설정",
         "commands": [
             '# BIND 버전 확인 및 업데이트',
             'named -v 2>/dev/null',
-            'echo "BIND를 최신 버전으로 업데이트하세요."'
+            'echo "BIND를 최신 버전으로 업데이트하세요."',
+            'echo "yum update bind 또는 apt upgrade bind9"'
         ]
     },
-    "U-34": {
-        "title": "DNS Zone Transfer 설정",
+    "U-50": {
+        "title": "DNS ZoneTransfer 설정",
         "commands": [
             '# Zone Transfer 제한',
             'if [ -f /etc/named.conf ]; then',
             '    grep -q "allow-transfer" /etc/named.conf || echo "options { allow-transfer { none; }; };" >> /etc/named.conf',
+            '    systemctl restart named 2>/dev/null',
             'fi',
             'echo "Zone Transfer가 제한되었습니다."'
         ]
     },
-    "U-35": {
-        "title": "Apache 디렉토리 리스팅 제거",
+    "U-51": {
+        "title": "DNS 보안버전 및 최신 보안패치 설치 여부",
         "commands": [
-            '# Apache 디렉토리 리스팅 비활성화',
-            'for conf in /etc/httpd/conf/httpd.conf /etc/apache2/apache2.conf; do',
-            '    [ -f "$conf" ] && sed -i "s/Options Indexes/Options -Indexes/" "$conf"',
+            '# DNS 보안 버전 확인',
+            'named -v 2>/dev/null',
+            'if command -v yum &>/dev/null; then',
+            '    yum update bind -y 2>/dev/null',
+            'elif command -v apt &>/dev/null; then',
+            '    apt update && apt install --only-upgrade bind9 -y 2>/dev/null',
+            'fi',
+            'echo "DNS 보안 버전 및 패치를 확인하세요."'
+        ]
+    },
+    "U-52": {
+        "title": "Telnet 서비스 비활성화",
+        "commands": [
+            '# Telnet 서비스 비활성화',
+            'systemctl stop telnet.socket 2>/dev/null',
+            'systemctl disable telnet.socket 2>/dev/null',
+            '[ -f /etc/xinetd.d/telnet ] && sed -i "s/disable.*=.*/disable = yes/" /etc/xinetd.d/telnet',
+            'echo "Telnet 서비스가 비활성화되었습니다."'
+        ]
+    },
+    "U-53": {
+        "title": "FTP 서비스 접근 제어 설정",
+        "commands": [
+            '# FTP 접근 제어 설정',
+            'if [ -f /etc/vsftpd/vsftpd.conf ]; then',
+            '    grep -q "^tcp_wrappers" /etc/vsftpd/vsftpd.conf || echo "tcp_wrappers=YES" >> /etc/vsftpd/vsftpd.conf',
+            '    systemctl restart vsftpd',
+            'fi',
+            'echo "FTP 서비스 접근 제어가 설정되었습니다."'
+        ]
+    },
+    "U-54": {
+        "title": "암호화되지 않는 FTP 서비스 비활성화",
+        "commands": [
+            '# FTP 서비스 비활성화 (불필요시)',
+            'systemctl stop vsftpd 2>/dev/null',
+            'systemctl disable vsftpd 2>/dev/null',
+            'echo "암호화되지 않는 FTP 서비스가 비활성화되었습니다."',
+            'echo "필요시 SFTP 또는 FTPS 사용을 권장합니다."'
+        ]
+    },
+    "U-55": {
+        "title": "FTP 서비스 shell 제한",
+        "commands": [
+            '# ftp 계정 shell 제한',
+            'usermod -s /sbin/nologin ftp 2>/dev/null',
+            'echo "ftp 계정의 shell이 제한되었습니다."'
+        ]
+    },
+    "U-56": {
+        "title": "FTP 서비스 접근 제한 설정",
+        "commands": [
+            '# ftpusers에 root 추가',
+            'for f in /etc/vsftpd/ftpusers /etc/ftpusers /etc/vsftpd/user_list; do',
+            '    [ -f "$f" ] && grep -q "^root" "$f" || echo "root" >> "$f" 2>/dev/null',
             'done',
-            'systemctl restart httpd 2>/dev/null || systemctl restart apache2 2>/dev/null',
-            'echo "디렉토리 리스팅이 비활성화되었습니다."'
+            'echo "FTP root 접근이 제한되었습니다."'
         ]
     },
-    "U-36": {
-        "title": "Apache 프로세스 권한 제한",
+    "U-57": {
+        "title": "Ftpusers 파일 설정",
         "commands": [
-            '# Apache 실행 사용자 확인',
-            'grep -E "^User|^Group" /etc/httpd/conf/httpd.conf 2>/dev/null',
-            'grep -E "^User|^Group" /etc/apache2/apache2.conf 2>/dev/null',
-            'echo "Apache가 root가 아닌 전용 계정으로 실행되는지 확인하세요."'
+            '# ftpusers 파일 권한 및 설정',
+            '[ -f /etc/vsftpd/ftpusers ] && chmod 640 /etc/vsftpd/ftpusers',
+            '[ -f /etc/ftpusers ] && chmod 640 /etc/ftpusers',
+            'echo "ftpusers 파일 설정이 완료되었습니다."',
+            'echo "root, bin, sys 등 시스템 계정이 ftpusers에 포함되어야 합니다."'
         ]
     },
-    "U-37": {
-        "title": "Apache 상위 디렉토리 접근 금지",
+    "U-58": {
+        "title": "불필요한 SNMP 서비스 실행 금지",
         "commands": [
-            '# Apache AllowOverride 설정',
-            'for conf in /etc/httpd/conf/httpd.conf /etc/apache2/apache2.conf; do',
-            '    [ -f "$conf" ] && sed -i "s/AllowOverride All/AllowOverride None/" "$conf"',
-            'done',
-            'echo "상위 디렉토리 접근이 제한되었습니다."'
+            '# SNMP 서비스 비활성화',
+            'systemctl stop snmpd 2>/dev/null',
+            'systemctl disable snmpd 2>/dev/null',
+            'echo "SNMP 서비스가 비활성화되었습니다."'
         ]
     },
-    "U-38": {
-        "title": "Apache 불필요한 파일 제거",
+    "U-59": {
+        "title": "불필요한 SNMP 서비스 삭제",
         "commands": [
-            '# Apache 매뉴얼/샘플 파일 제거',
-            'rm -rf /var/www/html/manual 2>/dev/null',
-            'rm -rf /var/www/html/icons 2>/dev/null',
-            'echo "불필요한 파일이 제거되었습니다."'
+            '# SNMP 패키지 제거',
+            'if command -v yum &>/dev/null; then',
+            '    yum remove net-snmp -y 2>/dev/null',
+            'elif command -v apt &>/dev/null; then',
+            '    apt remove snmpd -y 2>/dev/null',
+            'fi',
+            'echo "불필요한 SNMP 서비스가 삭제되었습니다."'
         ]
     },
-    "U-39": {
-        "title": "Apache 심볼릭 링크 사용 금지",
+    "U-60": {
+        "title": "SNMP Community String 복잡성 설정",
         "commands": [
-            '# Apache FollowSymLinks 비활성화',
-            'for conf in /etc/httpd/conf/httpd.conf /etc/apache2/apache2.conf; do',
-            '    [ -f "$conf" ] && sed -i "s/Options FollowSymLinks/Options -FollowSymLinks/" "$conf"',
-            'done',
-            'echo "심볼릭 링크 사용이 제한되었습니다."'
+            '# SNMP 커뮤니티 스트링 변경',
+            'if [ -f /etc/snmp/snmpd.conf ]; then',
+            '    sed -i "s/public/$(openssl rand -hex 8)/" /etc/snmp/snmpd.conf',
+            '    sed -i "s/private/$(openssl rand -hex 8)/" /etc/snmp/snmpd.conf',
+            '    systemctl restart snmpd 2>/dev/null',
+            'fi',
+            'echo "SNMP 커뮤니티 스트링이 변경되었습니다."'
         ]
     },
-    "U-40": {
-        "title": "Apache 파일 업로드/다운로드 제한",
+    "U-61": {
+        "title": "SNMP Access Control 설정",
         "commands": [
-            '# Apache LimitRequestBody 설정',
-            'echo "LimitRequestBody 5000000" >> /etc/httpd/conf/httpd.conf 2>/dev/null',
-            'echo "파일 업로드 크기가 5MB로 제한되었습니다."'
+            '# SNMP 접근 제어 설정',
+            'if [ -f /etc/snmp/snmpd.conf ]; then',
+            '    echo "# 허용 IP만 접근 가능하도록 설정" >> /etc/snmp/snmpd.conf',
+            '    echo "agentAddress udp:127.0.0.1:161" >> /etc/snmp/snmpd.conf',
+            '    systemctl restart snmpd 2>/dev/null',
+            'fi',
+            'echo "SNMP 접근 제어가 설정되었습니다."'
         ]
     },
-    "U-41": {
-        "title": "Apache DocumentRoot 분리",
+    "U-62": {
+        "title": "로그인 시 경고 메시지 제공",
         "commands": [
-            '# DocumentRoot 확인',
-            'grep DocumentRoot /etc/httpd/conf/httpd.conf 2>/dev/null',
-            'grep DocumentRoot /etc/apache2/sites-available/* 2>/dev/null',
-            'echo "DocumentRoot가 시스템 디렉토리와 분리되어 있는지 확인하세요."'
+            '# 로그인 경고 메시지 설정',
+            'echo "Authorized users only. All activities are monitored and logged." > /etc/issue',
+            'echo "Authorized users only. All activities are monitored and logged." > /etc/issue.net',
+            'sed -i "s/^#*Banner.*/Banner \\/etc\\/issue.net/" /etc/ssh/sshd_config',
+            'systemctl restart sshd',
+            'echo "로그인 경고 메시지가 설정되었습니다."'
         ]
     },
-    "U-42": {
-        "title": "최신 보안 패치 적용",
+    "U-63": {
+        "title": "sudo 명령어 설정 제한",
+        "commands": [
+            '# sudo 설정 확인 및 제한',
+            'chmod 440 /etc/sudoers',
+            'echo "sudo 설정을 확인하세요: visudo 명령으로 편집"',
+            'echo "/etc/sudoers에서 NOPASSWD 설정을 제거하고 필요한 사용자만 허용하세요."'
+        ]
+    },
+    "U-64": {
+        "title": "최신의 보안 패치 및 벤더 권고사항 적용",
         "commands": [
             '# 시스템 패치 적용',
             'if command -v yum &>/dev/null; then',
@@ -1001,225 +1255,40 @@ UNIX_REMEDIATION = {
             'echo "시스템 패치가 적용되었습니다."'
         ]
     },
-    "U-43": {
-        "title": "로그 정기적 검토",
-        "commands": [
-            '# 최근 로그 확인',
-            'tail -20 /var/log/secure 2>/dev/null || tail -20 /var/log/auth.log 2>/dev/null',
-            'echo "로그를 정기적으로 검토하세요."'
-        ]
-    },
-    "U-44": {
-        "title": "root 외 UID 0 금지",
-        "commands": [
-            '# UID 0 계정 확인',
-            'awk -F: \'$3 == 0 && $1 != "root" {print $1}\' /etc/passwd',
-            'echo "root 외 UID 0 계정이 있으면 제거하세요."'
-        ]
-    },
-    "U-45": {
-        "title": "root 계정 su 제한",
-        "commands": [
-            '# wheel 그룹만 su 허용',
-            'echo "auth required pam_wheel.so use_uid" >> /etc/pam.d/su',
-            'echo "su 명령이 wheel 그룹으로 제한되었습니다."',
-            'echo "허용할 사용자: usermod -aG wheel <사용자명>"'
-        ]
-    },
-    "U-46": {
-        "title": "패스워드 최소 길이 설정",
-        "commands": [
-            '# 패스워드 최소 길이 8자',
-            'sed -i "s/^PASS_MIN_LEN.*/PASS_MIN_LEN    8/" /etc/login.defs',
-            'echo "패스워드 최소 길이가 8자로 설정되었습니다."'
-        ]
-    },
-    "U-47": {
-        "title": "패스워드 최대 사용기간 설정",
-        "commands": [
-            '# 패스워드 최대 사용기간 90일',
-            'sed -i "s/^PASS_MAX_DAYS.*/PASS_MAX_DAYS   90/" /etc/login.defs',
-            'echo "패스워드 최대 사용기간이 90일로 설정되었습니다."'
-        ]
-    },
-    "U-48": {
-        "title": "패스워드 최소 사용기간 설정",
-        "commands": [
-            '# 패스워드 최소 사용기간 1일',
-            'sed -i "s/^PASS_MIN_DAYS.*/PASS_MIN_DAYS   1/" /etc/login.defs',
-            'echo "패스워드 최소 사용기간이 1일로 설정되었습니다."'
-        ]
-    },
-    "U-49": {
-        "title": "불필요한 계정 제거",
-        "commands": [
-            '# 불필요한 계정 확인',
-            'cat /etc/passwd | grep -v nologin | grep -v false',
-            'echo "위 계정 중 불필요한 계정을 제거하세요."',
-            'echo "명령: userdel <계정명>"'
-        ]
-    },
-    "U-50": {
-        "title": "관리자 그룹 최소화",
-        "commands": [
-            '# wheel/sudo 그룹 확인',
-            'getent group wheel 2>/dev/null || getent group sudo',
-            'echo "관리자 그룹에 필요한 계정만 포함되어 있는지 확인하세요."'
-        ]
-    },
-    "U-51": {
-        "title": "계정 없는 GID 금지",
-        "commands": [
-            '# 사용되지 않는 그룹 확인',
-            'for gid in $(cut -d: -f4 /etc/passwd | sort -u); do',
-            '    getent group $gid >/dev/null || echo "GID $gid: 계정 없음"',
-            'done',
-            'echo "사용되지 않는 그룹을 정리하세요."'
-        ]
-    },
-    "U-52": {
-        "title": "동일 UID 금지",
-        "commands": [
-            '# 중복 UID 확인',
-            'cut -d: -f3 /etc/passwd | sort | uniq -d',
-            'echo "중복 UID가 있으면 수정하세요."'
-        ]
-    },
-    "U-53": {
-        "title": "사용자 shell 점검",
-        "commands": [
-            '# 로그인 불필요 계정 shell 확인',
-            'awk -F: \'$7 !~ /nologin|false/ && $3 >= 500 {print $1, $7}\' /etc/passwd',
-            'echo "로그인이 필요없는 계정의 shell을 /sbin/nologin으로 변경하세요."'
-        ]
-    },
-    "U-54": {
-        "title": "Session Timeout 설정",
-        "commands": [
-            '# TMOUT 설정',
-            'echo "export TMOUT=600" >> /etc/profile',
-            'source /etc/profile',
-            'echo "세션 타임아웃이 10분으로 설정되었습니다."'
-        ]
-    },
-    "U-55": {
-        "title": "hosts.lpd 파일 권한 설정",
-        "commands": [
-            '# hosts.lpd 권한 설정',
-            '[ -f /etc/hosts.lpd ] && chmod 600 /etc/hosts.lpd && chown root:root /etc/hosts.lpd',
-            'echo "hosts.lpd 권한이 설정되었습니다."'
-        ]
-    },
-    "U-56": {
-        "title": "UMASK 설정",
-        "commands": [
-            '# UMASK 022 설정',
-            'sed -i "s/^UMASK.*/UMASK 022/" /etc/login.defs',
-            'echo "umask 022" >> /etc/profile',
-            'echo "UMASK가 022로 설정되었습니다."'
-        ]
-    },
-    "U-57": {
-        "title": "홈 디렉토리 권한 설정",
-        "commands": [
-            '# 홈 디렉토리 권한 설정',
-            'for dir in /home/*; do',
-            '    [ -d "$dir" ] && chmod 700 "$dir"',
-            'done',
-            'echo "홈 디렉토리 권한이 설정되었습니다."'
-        ]
-    },
-    "U-58": {
-        "title": "홈 디렉토리 존재 확인",
-        "commands": [
-            '# 홈 디렉토리 존재 확인',
-            'awk -F: \'{print $1, $6}\' /etc/passwd | while read user home; do',
-            '    [ ! -d "$home" ] && echo "$user: $home 없음"',
-            'done',
-            'echo "홈 디렉토리가 없는 계정을 확인하세요."'
-        ]
-    },
-    "U-59": {
-        "title": "숨겨진 파일 점검",
-        "commands": [
-            '# 숨겨진 파일 확인',
-            'find / -name ".*" -type f 2>/dev/null | head -30',
-            'echo "불필요한 숨겨진 파일을 확인하고 제거하세요."'
-        ]
-    },
-    "U-60": {
-        "title": "SSH 원격 접속 허용",
-        "commands": [
-            '# SSH 서비스 활성화',
-            'systemctl enable sshd',
-            'systemctl start sshd',
-            'echo "SSH가 활성화되었습니다."'
-        ]
-    },
-    "U-61": {
-        "title": "FTP 서비스 확인",
-        "commands": [
-            '# FTP 서비스 비활성화 (불필요시)',
-            'systemctl stop vsftpd 2>/dev/null',
-            'systemctl disable vsftpd 2>/dev/null',
-            'echo "FTP 서비스가 비활성화되었습니다."'
-        ]
-    },
-    "U-62": {
-        "title": "FTP 계정 shell 제한",
-        "commands": [
-            '# ftp 계정 shell 제한',
-            'usermod -s /sbin/nologin ftp 2>/dev/null',
-            'echo "ftp 계정의 shell이 제한되었습니다."'
-        ]
-    },
-    "U-63": {
-        "title": "ftpusers 파일 권한 설정",
-        "commands": [
-            '# ftpusers 파일 권한',
-            '[ -f /etc/vsftpd/ftpusers ] && chmod 640 /etc/vsftpd/ftpusers',
-            '[ -f /etc/ftpusers ] && chmod 640 /etc/ftpusers',
-            'echo "ftpusers 파일 권한이 설정되었습니다."'
-        ]
-    },
-    "U-64": {
-        "title": "FTP root 계정 접근 제한",
-        "commands": [
-            '# ftpusers에 root 추가',
-            'for f in /etc/vsftpd/ftpusers /etc/ftpusers; do',
-            '    [ -f "$f" ] && grep -q "^root" "$f" || echo "root" >> "$f"',
-            'done',
-            'echo "FTP root 접근이 제한되었습니다."'
-        ]
-    },
     "U-65": {
-        "title": "at 서비스 권한 설정",
+        "title": "NTP 및 시간 동기화 설정",
         "commands": [
-            '# at.allow 설정',
-            'echo "root" > /etc/at.allow',
-            'chmod 600 /etc/at.allow',
-            'echo "at 서비스가 root만 사용 가능합니다."'
+            '# NTP 시간 동기화 설정',
+            'if command -v timedatectl &>/dev/null; then',
+            '    timedatectl set-ntp true',
+            'fi',
+            'systemctl enable chronyd 2>/dev/null || systemctl enable ntpd 2>/dev/null',
+            'systemctl start chronyd 2>/dev/null || systemctl start ntpd 2>/dev/null',
+            'echo "NTP 시간 동기화가 설정되었습니다."'
         ]
     },
     "U-66": {
-        "title": "SNMP 서비스 점검",
+        "title": "정책에 따른 시스템 로깅 설정",
         "commands": [
-            '# SNMP 서비스 비활성화',
-            'systemctl stop snmpd 2>/dev/null',
-            'systemctl disable snmpd 2>/dev/null',
-            'echo "SNMP 서비스가 비활성화되었습니다."'
+            '# syslog 로깅 설정',
+            'systemctl enable rsyslog 2>/dev/null',
+            'systemctl start rsyslog 2>/dev/null',
+            '[ -f /etc/rsyslog.conf ] && grep -q "authpriv" /etc/rsyslog.conf || echo "authpriv.* /var/log/secure" >> /etc/rsyslog.conf',
+            'systemctl restart rsyslog 2>/dev/null',
+            'echo "시스템 로깅이 설정되었습니다."'
         ]
     },
     "U-67": {
-        "title": "SNMP 커뮤니티 스트링 변경",
+        "title": "로그 디렉터리 소유자 및 권한 설정",
         "commands": [
-            '# SNMP 커뮤니티 스트링 변경',
-            'if [ -f /etc/snmp/snmpd.conf ]; then',
-            '    sed -i "s/public/$(openssl rand -hex 8)/" /etc/snmp/snmpd.conf',
-            '    sed -i "s/private/$(openssl rand -hex 8)/" /etc/snmp/snmpd.conf',
-            '    systemctl restart snmpd 2>/dev/null',
-            'fi',
-            'echo "SNMP 커뮤니티 스트링이 변경되었습니다."'
+            '# 로그 디렉터리 권한 설정',
+            'chown root:root /var/log',
+            'chmod 750 /var/log',
+            'chmod 640 /var/log/messages 2>/dev/null',
+            'chmod 640 /var/log/secure 2>/dev/null',
+            'chmod 640 /var/log/auth.log 2>/dev/null',
+            'chmod 640 /var/log/syslog 2>/dev/null',
+            'echo "로그 디렉터리 소유자 및 권한이 설정되었습니다."'
         ]
     },
 }
