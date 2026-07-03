@@ -1,6 +1,9 @@
 """FastAPI application entry point."""
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from app.core.config import settings
 from app.core.database import init_db
@@ -41,6 +44,21 @@ async def health_check():
 app.include_router(api_router, prefix="/api")
 
 
+_STATIC_DIR = Path("/app/static")
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa(full_path: str):
+    """Serve built frontend for all non-API routes (SPA catch-all)."""
+    candidate = _STATIC_DIR / full_path
+    if candidate.exists() and candidate.is_file():
+        return FileResponse(str(candidate))
+    index = _STATIC_DIR / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return {"detail": "Not found"}
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8080, reload=True)
